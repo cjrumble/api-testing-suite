@@ -1,114 +1,37 @@
-# https://github.com/naveenanimation20/APITesting_Python_RequestModule/blob/master/GoRestAPI/RequestAPI.py
-import requests
-import random
-import json
-import string
+"""REST API CRUD smoke test example.
 
-#base url:
-base_url = "https://gorest.co.in"
+The API credential is supplied through GOREST_API_TOKEN and is never stored
+in source control.
+"""
+import os, random, string, requests
+BASE_URL = "https://gorest.co.in"
+AUTH_TOKEN = os.getenv("GOREST_API_TOKEN")
+if not AUTH_TOKEN:
+    raise RuntimeError("GOREST_API_TOKEN is not set; never hard-code API credentials.")
+HEADERS = {"Authorization": f"Bearer {AUTH_TOKEN}"}
 
-#Auth token:
-#auth_token = "Bearer <TokenID>"
-auth_token = "f7ea04088691b8b4d1ea1901f1a8c55f14f3b4482f4ab597cfd5e79e860b84cd"
-
-#get random email id:
 def generate_random_email():
-    domain = "automation.com"
-    email_length = 10
-    random_string = ''.join(random.choice(string.ascii_lowercase) for _ in range(email_length))
-    email = random_string + "@" + domain
-    return email
+    return "".join(random.choice(string.ascii_lowercase) for _ in range(10)) + "@automation.com"
 
-
-#GET Request
 def get_request():
-    url = base_url + "/public/v2/users"
-    print("get url: " + url)
-    headers = {"Authorization": auth_token}
-    response = requests.get(url, headers=headers)
+    response = requests.get(f"{BASE_URL}/public/v2/users", headers=HEADERS, timeout=30)
     assert response.status_code == 200
-    json_data = response.json()
-    json_str = json.dumps(json_data, indent=4)
-    print("json GET response body: ", json_str)
-    print(".......GET USER IS DONE.......")
-    print(".......=====================.......")
+    return response.json()
 
-#POST Request
 def post_request():
-    url = base_url + "/public/v2/users"
-    print("post url: " + url)
-    headers = {"Authorization": auth_token}
-    data = {
-        "name": "Naveen Automation",
-        "email": generate_random_email(),
-        "gender": "male",
-        "status": "active"
-    }
-    response = requests.post(url, json=data, headers=headers)
-    json_data = response.json()
-    json_str = json.dumps(json_data, indent=4)
-    print("json POST response body: ", json_str)
-    user_id = json_data["id"]
-    print("user id ===>", user_id)
+    data = {"name":"API Automation Test","email":generate_random_email(),"gender":"male","status":"active"}
+    response = requests.post(f"{BASE_URL}/public/v2/users", json=data, headers=HEADERS, timeout=30)
     assert response.status_code == 201
-    assert "name" in json_data
-    assert json_data["name"] == "Naveen Automation"
-    print(".......POST/Create USER IS DONE.......")
-    print(".......=====================.......")
-    return user_id
+    body=response.json(); assert body["name"] == data["name"]; return body["id"]
 
-
-#PUT Request
 def put_request(user_id):
-    url = base_url + f"/public/v2/users/{user_id}"
-    print("PUT url: " + url)
-    headers = {"Authorization": auth_token}
-    data = {
-        "name": "Naveen Automation Labs",
-        "email": generate_random_email(),
-        "gender": "male",
-        "status": "inactive"
-    }
-    response = requests.put(url, json=data, headers=headers)
-    assert response.status_code == 200
-    json_data = response.json()
-    json_str = json.dumps(json_data, indent=4)
-    print("json PUT response body: ", json_str)
-    assert json_data["id"] == user_id
-    assert json_data["name"] == "Naveen Automation Labs"
-    print(".......PUT/Update USER IS DONE.......")
-    print(".......=====================.......")
+    data={"name":"API Automation Updated","email":generate_random_email(),"gender":"male","status":"inactive"}
+    response=requests.put(f"{BASE_URL}/public/v2/users/{user_id}",json=data,headers=HEADERS,timeout=30)
+    assert response.status_code == 200; assert response.json()["id"] == user_id
 
-
-#DELETE Request
 def delete_request(user_id):
-    url = base_url + f"/public/v2/users/{user_id}"
-    print("DELETE url: " + url)
-    headers = {"Authorization": auth_token}
-    response = requests.delete(url, headers=headers)
+    response=requests.delete(f"{BASE_URL}/public/v2/users/{user_id}",headers=HEADERS,timeout=30)
     assert response.status_code == 204
-    print(".......DELETE USER IS DONE.......")
-    print(".......=====================.......")
 
-
-#call
-get_request()
-user_id = post_request()
-put_request(user_id)
-delete_request(user_id)
-
-
-# REST API Http Response Codes
-# 200: OK. Everything worked as expected.
-# 201: A resource was successfully created in response to a POST request. The Location header contains the URL pointing to the newly created resource.
-# 204: The request was handled successfully and the response contains no body content (like a DELETE request).
-# 304: The resource was not modified. You can use the cached version.
-# 400: Bad request. This could be caused by various actions by the user, such as providing invalid JSON data in the request body etc.
-# 401: Authentication failed.
-# 403: The authenticated user is not allowed to access the specified API endpoint.
-# 404: The requested resource does not exist.
-# 405: Method not allowed. Please check the Allow header for the allowed HTTP methods.
-# 415: Unsupported media type. The requested content type or version number is invalid.
-# 422: Data validation failed (in response to a POST request, for example). Please check the response body for detailed error messages.
-# 429: Too many requests. The request was rejected due to rate limiting.
-# 500: Internal server error. This could be caused by internal program errors.
+if __name__ == "__main__":
+    get_request(); user_id=post_request(); put_request(user_id); delete_request(user_id)
